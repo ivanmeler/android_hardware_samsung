@@ -57,9 +57,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
-#include "format.h"
+#include <pixelflinger/format.h>
 
-#include "videodev2.h"
+#include <linux/videodev2.h>
 #include "s5p_fimc.h"
 
 #ifdef SAMSUNG_EXYNOS4x12
