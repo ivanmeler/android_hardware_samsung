@@ -27,7 +27,7 @@ common_exynos4_dirs += libfimc
 endif
 
 ifeq ($(BOARD_USES_PROPRIETARY_HWC),true)
-common_exynos4_dirs += libHWCService libIPService
+common_exynos4_dirs += libHWCService libIPService libhwcwrapper
 else
 common_exynos4_dirs += libhwcomposer
 endif
