@@ -272,13 +272,6 @@ static int hwc_getDisplayAttributes(struct hwc_composer_device_1* dev, int disp,
                 values[i] = ctx->ydpi;
                 break;
 
-            case HWC_DISPLAY_SECURE:
-                /* Indicates if the display is secure
-                 * For HDMI/WFD if the sink supports HDCP, it will be true
-                 * Primary panel is always considered secure
-                 */
-                break;
-
             default:
                 ALOGE("%s::unknown display attribute %d", __func__, attributes[i]);
                 return -EINVAL;

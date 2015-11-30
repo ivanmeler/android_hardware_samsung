@@ -17,6 +17,7 @@
 #include <linux/fb.h>
 #include <sys/ioctl.h>
 #include <sync/sync.h>
+#include <malloc.h>
 
 #include "gralloc_priv.h"
 #include "s3c_lcd.h"
