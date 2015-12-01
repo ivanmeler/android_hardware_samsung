@@ -35,6 +35,7 @@
 #include <sys/ioctl.h>
 #include <linux/fb.h>
 #include <stdlib.h>
+#include <malloc.h>
 
 #include <cutils/log.h>
 #include <cutils/atomic.h>
@@ -451,7 +452,7 @@ int framebuffer_device_open(hw_module_t const* module, const char* name, hw_devi
     }
 
     /* initialize our state here */
-    framebuffer_device_t *dev = new framebuffer_device_t();
+    framebuffer_device_t *dev = (framebuffer_device_t *) malloc(sizeof(framebuffer_device_t));
     memset(dev, 0, sizeof(*dev));
 
     /* initialize the procs */

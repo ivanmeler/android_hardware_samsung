@@ -20,6 +20,9 @@
 /* enum related to pixel format */
 
 enum {
+    HAL_PIXEL_FORMAT_RGBA_5551                  = 6,
+    HAL_PIXEL_FORMAT_RGBA_4444                  = 7,
+
     HAL_PIXEL_FORMAT_YCbCr_422_P                = 0x100,
     HAL_PIXEL_FORMAT_YCbCr_420_P                = 0x101,
     HAL_PIXEL_FORMAT_YCbCr_420_I                = 0x102,
