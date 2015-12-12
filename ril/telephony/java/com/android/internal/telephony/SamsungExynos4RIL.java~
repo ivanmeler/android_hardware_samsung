@@ -379,9 +379,8 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
                     break;
             }
 
-           if (error != 0) rr.onError(error, ret);
-        } 
-        if (error == 0) {
+            rr.onError(error, ret);
+        } else {
 
             if (RILJ_LOGD) riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
                     + " " + retToString(rr.mRequest, ret));
