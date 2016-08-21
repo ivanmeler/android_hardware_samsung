@@ -34,7 +34,6 @@
 #include <errno.h>
 #include <cutils/log.h>
 
-#include <linux/videodev.h>
 #include "videodev2.h"
 #include "s5p_fimc.h"
 #include "sec_utils.h"
