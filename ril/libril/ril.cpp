@@ -68,6 +68,7 @@ namespace android {
 #define ANDROID_WAKE_LOCK_USECS 200000
 
 #define PROPERTY_RIL_IMPL "gsm.version.ril-impl"
+#define PROPERTY_QAN_ELEMENTS "ro.ril.telephony.mqanelements"
 
 // match with constant in RIL.java
 #define MAX_COMMAND_BYTES (8 * 1024)
@@ -277,6 +278,7 @@ static void dispatchRadioCapability(Parcel &p, RequestInfo *pRI);
 static int responseInts(Parcel &p, void *response, size_t responselen);
 static int responseIntsGetPreferredNetworkType(Parcel &p, void *response, size_t responselen);
 static int responseStrings(Parcel &p, void *response, size_t responselen);
+static int responseStringsNetworks(Parcel &p, void *response, size_t responselen);
 static int responseStrings(Parcel &p, void *response, size_t responselen, bool network_search);
 static int responseString(Parcel &p, void *response, size_t responselen);
 static int responseVoid(Parcel &p, void *response, size_t responselen);
@@ -343,16 +345,16 @@ static CommandInfo s_commands[] = {
 #include "ril_commands.h"
 };
 
-static CommandInfo s_commands_v[] = {
-#include "ril_commands_vendor.h"
-};
-
 static UnsolResponseInfo s_unsolResponses[] = {
 #include "ril_unsol_commands.h"
 };
 
+static CommandInfo s_commands_v[] = {
+#include <telephony/ril_commands_vendor.h>
+};
+
 static UnsolResponseInfo s_unsolResponses_v[] = {
-#include "ril_unsol_commands_vendor.h"
+#include <telephony/ril_unsol_commands_vendor.h>
 };
 
 /* For older RILs that do not support new commands RIL_REQUEST_VOICE_RADIO_TECH and
@@ -787,7 +789,7 @@ dispatchDial (Parcel &p, RequestInfo *pRI) {
     int32_t sizeOfDial;
     int32_t t;
     int32_t uusPresent;
-#ifdef MODEM_TYPE_XMM7260
+#ifdef SAMSUNG_NEXT_GEN_MODEM
     char *csv;
 #endif
     status_t status;
@@ -804,7 +806,7 @@ dispatchDial (Parcel &p, RequestInfo *pRI) {
         goto invalid;
     }
 
-#ifdef MODEM_TYPE_XMM7260
+#ifdef SAMSUNG_NEXT_GEN_MODEM
     /* CallDetails.call_type */
     status = p.readInt32(&t);
     if (status != NO_ERROR) {
@@ -834,7 +836,7 @@ dispatchDial (Parcel &p, RequestInfo *pRI) {
         }
 
         if (uusPresent == 0) {
-#if defined(MODEM_TYPE_XMM6262) || defined(MODEM_TYPE_XMM7260)
+#if defined(MODEM_TYPE_XMM6262) || defined(SAMSUNG_NEXT_GEN_MODEM)
             dial.uusInfo = NULL;
 #elif defined(MODEM_TYPE_XMM6260)
             /* Samsung hack */
@@ -1942,7 +1944,7 @@ static void dispatchSimAuthentication(Parcel &p, RequestInfo *pRI)
     pf.aid = strdupReadString(p);
 
     startRequest;
-    appendPrintBuf("authContext=%s, authData=%s, aid=%s", pf.authContext, pf.authData, pf.aid);
+    appendPrintBuf("authContext=%d, authData=%s, aid=%s", pf.authContext, pf.authData, pf.aid);
     closeRequest;
     printRequest(pRI->token, pRI->pCI->requestNumber);
 
@@ -2088,8 +2090,8 @@ static void dispatchRadioCapability(Parcel &p, RequestInfo *pRI){
 
     startRequest;
     appendPrintBuf("%s [version:%d, session:%d, phase:%d, rat:%d, \
-            logicalModemUuid:%s, status:%d", printBuf, rc.version, rc.session
-            rc.phase, rc.rat, rc.logicalModemUuid, rc.session);
+            logicalModemUuid:%s, status:%d", printBuf, rc.version, rc.session,
+            rc.phase, rc.rat, rc.logicalModemUuid, rc.status);
 
     closeRequest;
     printRequest(pRI->token, pRI->pCI->requestNumber);
@@ -2140,7 +2142,7 @@ sendResponseRaw (const void *data, size_t dataSize, RIL_SOCKET_ID socket_id) {
     pthread_mutex_t * writeMutexHook = &s_writeMutex;
 
 #if VDBG
-    RLOGE("Send Response to %s", rilSocketIdToString(socket_id));
+    RLOGD("Send Response to %s", rilSocketIdToString(socket_id));
 #endif
 
 #if (SIM_COUNT >= 2)
@@ -2281,6 +2283,10 @@ static int responseStrings(Parcel &p, void *response, size_t responselen) {
     return responseStrings(p, response, responselen, false);
 }
 
+static int responseStringsNetworks(Parcel &p, void *response, size_t responselen) {
+    return responseStrings(p, response, responselen, true);
+}
+
 /** response is a char **, pointing to an array of char *'s */
 static int responseStrings(Parcel &p, void *response, size_t responselen, bool network_search) {
     int numStrings;
@@ -2301,11 +2307,24 @@ static int responseStrings(Parcel &p, void *response, size_t responselen, bool n
         char **p_cur = (char **) response;
 
         numStrings = responselen / sizeof(char *);
-        p.writeInt32 (numStrings);
+        if (network_search) {
+            int32_t QANElements;
+
+            /*
+             * This needs to be set to same value as mQANElements in the RIL
+             * Telephony class.
+             */
+            QANElements = property_get_int32(PROPERTY_QAN_ELEMENTS, 4);
+            p.writeInt32 ((numStrings / 5) * QANElements);
+        } else {
+            p.writeInt32 (numStrings);
+        }
 
         /* each string*/
         startResponse;
         for (int i = 0 ; i < numStrings ; i++) {
+            if (network_search && ((i + 1) % 5 == 0))
+                continue;
             appendPrintBuf("%s%s,", printBuf, (char*)p_cur[i]);
             writeStringToParcel (p, p_cur[i]);
         }
@@ -2367,9 +2386,11 @@ static int responseCallList(Parcel &p, void *response, size_t responselen) {
         p.writeInt32(p_cur->als);
         p.writeInt32(p_cur->isVoice);
 
-#ifdef MODEM_TYPE_XMM7260
+#ifdef NEEDS_VIDEO_CALL_FIELD
         p.writeInt32(p_cur->isVideo);
+#endif
 
+#ifdef SAMSUNG_NEXT_GEN_MODEM
         /* Pass CallDetails */
         p.writeInt32(0);
         p.writeInt32(0);
@@ -2404,7 +2425,7 @@ static int responseCallList(Parcel &p, void *response, size_t responselen) {
             p_cur->als,
             (p_cur->isVoice)?"voc":"nonvoc",
             (p_cur->isVoicePrivacy)?"evp":"noevp");
-#ifdef MODEM_TYPE_XMM7260
+#ifdef SAMSUNG_NEXT_GEN_MODEM
         appendPrintBuf("%s,%s,",
             printBuf,
             (p_cur->isVideo) ? "vid" : "novid");
@@ -3006,7 +3027,7 @@ static int responseRilSignalStrength(Parcel &p,
 
         p.writeInt32(p_cur->GW_SignalStrength.bitErrorRate);
 
-#if defined(MODEM_TYPE_XMM6262) || defined(MODEM_TYPE_XMM7260)
+#if defined(MODEM_TYPE_XMM6262) || defined(SAMSUNG_NEXT_GEN_MODEM)
         cdmaDbm = p_cur->CDMA_SignalStrength.dbm & 0xFF;
         if (cdmaDbm < 0) {
             cdmaDbm = 99;
@@ -3019,7 +3040,7 @@ static int responseRilSignalStrength(Parcel &p,
         p.writeInt32(cdmaDbm);
         p.writeInt32(p_cur->CDMA_SignalStrength.ecio);
 
-#if defined(MODEM_TYPE_XMM6262) || defined(MODEM_TYPE_XMM7260)
+#if defined(MODEM_TYPE_XMM6262) || defined(SAMSUNG_NEXT_GEN_MODEM)
         evdoDbm = p_cur->EVDO_SignalStrength.dbm & 0xFF;
         if (evdoDbm < 0) {
             evdoDbm = 99;
@@ -3447,7 +3468,7 @@ static int responseRadioCapability(Parcel &p, void *response, size_t responselen
 
     startResponse;
     appendPrintBuf("%s[version=%d,session=%d,phase=%d,\
-            rat=%s,logicalModemUuid=%s,status=%d]",
+            rat=%d,logicalModemUuid=%s,status=%d]",
             printBuf,
             p_cur->version,
             p_cur->session,
@@ -3738,7 +3759,7 @@ static int responseDcRtInfo(Parcel &p, void *response, size_t responselen)
     p.writeInt32(pDcRtInfo->powerState);
     appendPrintBuf("%s[time=%d,powerState=%d]", printBuf,
         pDcRtInfo->time,
-        pDcRtInfo->powerState);
+        (int)pDcRtInfo->powerState);
     closeResponse;
 
     return 0;
@@ -5145,7 +5166,6 @@ requestToString(int request) {
         case RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION: return "ENTER_NETWORK_DEPERSONALIZATION";
         case RIL_REQUEST_GET_CURRENT_CALLS: return "GET_CURRENT_CALLS";
         case RIL_REQUEST_DIAL: return "DIAL";
-        case RIL_REQUEST_DIAL_EMERGENCY: return "DIAL";
         case RIL_REQUEST_GET_IMSI: return "GET_IMSI";
         case RIL_REQUEST_HANGUP: return "HANGUP";
         case RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND: return "HANGUP_WAITING_OR_BACKGROUND";
