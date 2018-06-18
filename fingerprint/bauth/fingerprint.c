@@ -128,13 +128,29 @@ static int fingerprint_cancel(struct fingerprint_device __unused *dev)
 
     ret = bauth_handle->ss_fingerprint_cancel();
 
+    // allocate and reset message
     cancel_msg = (fingerprint_msg_t *)malloc(sizeof(fingerprint_msg_t));
     memset(cancel_msg, 0, sizeof(fingerprint_msg_t));
 
+    // mark message as error
     cancel_msg->type = FINGERPRINT_ERROR;
-    cancel_msg->data.error = FINGERPRINT_ERROR_CANCELED;
 
+    // decide upon the error-data based on the result of the cancel()-call
+    if (!ret) {
+        // let's just assume that the authentication-process was canceled successfully.
+        cancel_msg->data.error = FINGERPRINT_ERROR_CANCELED;
+    } else {
+        // if bauth already failed to send the cancel-command to hardware, we
+        // shouldn't notify the system about a successful cancel either
+        cancel_msg->data.error = FINGERPRINT_ERROR_HW_UNAVAILABLE;
+    }
+
+    // send message to system and clean up afterwards
+    // TODO: make sure that the notify is being sent synchronous, else this
+    //       could randomly lead to invalid messages
     original_notify(cancel_msg);
+    free(cancel_msg);
+
     return ret;
 }
 
