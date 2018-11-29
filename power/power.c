@@ -217,8 +217,6 @@ static void send_boostpulse(int boostpulse_fd)
 static void set_power_profile(struct samsung_power_module *samsung_pwr,
                               int profile)
 {
-    int rc;
-
     if (profile < 0 || profile >= PROFILE_MAX) {
         return;
     }
@@ -525,20 +523,8 @@ static void samsung_power_hint(struct power_module *module,
     }
 }
 
-static int samsung_get_feature(struct power_module *module __unused,
-                               feature_t feature)
+static void samsung_set_feature(struct power_module *module __unused, feature_t feature, int state __unused)
 {
-    if (feature == POWER_FEATURE_SUPPORTED_PROFILES) {
-        return PROFILE_MAX;
-    }
-
-    return -1;
-}
-
-static void samsung_set_feature(struct power_module *module, feature_t feature, int state __unused)
-{
-    struct samsung_power_module *samsung_pwr = (struct samsung_power_module *) module;
-
     switch (feature) {
 #ifdef TARGET_TAP_TO_WAKE_NODE
         case POWER_FEATURE_DOUBLE_TAP_TO_WAKE:
@@ -570,7 +556,6 @@ struct samsung_power_module HAL_MODULE_INFO_SYM = {
         .init = samsung_power_init,
         .setInteractive = samsung_power_set_interactive,
         .powerHint = samsung_power_hint,
-        .getFeature = samsung_get_feature,
         .setFeature = samsung_set_feature
     },
 
