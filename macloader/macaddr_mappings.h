@@ -105,6 +105,7 @@ static const struct company_range semco3rd_ranges = {
     .macaddrs = {
         "04:d6:aa",
         "2c:0e:3d",
+        "30:07:4d",
         "54:88:0e",
         "84:38:38",
         "8c:f5:a3",
