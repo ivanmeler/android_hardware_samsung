@@ -240,10 +240,6 @@ struct pcm_device {
     struct pcm_device_profile* pcm_profile;
     struct pcm*                pcm;
     int                        status;
-    /* TODO: remove resampler if possible when AudioFlinger supports downsampling from 48 to 8 */
-    struct resampler_itfe*     resampler;
-    int16_t*                   res_buffer;
-    size_t                     res_byte_count;
 };
 
 struct stream_out {
@@ -372,7 +368,7 @@ struct voice_data {
     float volume;
     bool  bluetooth_nrec;
     bool  bluetooth_wb;
-    void  *session;
+    struct voice_session *session;
 };
 
 struct audio_device {
@@ -384,6 +380,10 @@ struct audio_device {
     struct stream_out*      primary_output;
     bool                    mic_mute;
     bool                    screen_off;
+
+    bool                    bt_sco_active;
+    struct pcm              *pcm_sco_rx;
+    struct pcm              *pcm_sco_tx;
 
     struct voice_data       voice;
 
