@@ -131,6 +131,7 @@ static const struct company_range semco3rd_ranges = {
 static const struct company_range semco_ranges = {
     .type = SEMCO,
     .macaddrs = {
+        "3c:f7:a4",
         "48:13:7e",
         "4c:66:41",
         "51:f6:6b",
