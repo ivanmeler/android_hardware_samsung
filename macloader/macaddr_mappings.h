@@ -139,6 +139,7 @@ static const struct company_range semco_ranges = {
         "a4:84:31",
         "cc:07:ab",
         "d8:c4:e9",
+        "e4:fa:ed",
         "e8:3a:12",
         "ec:9b:f3",
         "f0:25:b7",
